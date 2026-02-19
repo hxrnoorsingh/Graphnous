@@ -1,0 +1,9 @@
+{
+  "/decisions/[id]/page": "app/decisions/[id]/page.js",
+  "/decisions/new/page": "app/decisions/new/page.js",
+  "/decisions/page": "app/decisions/page.js",
+  "/drift/page": "app/drift/page.js",
+  "/graph/page": "app/graph/page.js",
+  "/page": "app/page.js",
+  "/search/page": "app/search/page.js"
+}
