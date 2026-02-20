@@ -8,12 +8,25 @@ from datetime import date, datetime
 DB_PATH = os.path.join(os.path.dirname(__file__), "graphnous.db")
 
 
+
 def get_db():
     """Get a database connection (call per-request)."""
-    conn = sqlite3.connect(DB_PATH)
+    turso_url = os.environ.get("TURSO_DATABASE_URL")
+    turso_auth_token = os.environ.get("TURSO_AUTH_TOKEN")
+
+    if turso_url and turso_auth_token:
+        import libsql_experimental as libsql
+        conn = libsql.connect(database=turso_url, auth_token=turso_auth_token)
+    else:
+        conn = sqlite3.connect(DB_PATH)
+
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
+    # LibSQL doesn't support PRAGMA journal_mode=WAL over HTTP, and foreign keys are on by default in some versions but worth checking.
+    # We will wrap in try/except or just omit for Turso if unnecessary, but standard sqlite3 needs them.
+    if not turso_url:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+    
     return conn
 
 
