@@ -30,7 +30,31 @@ app.include_router(drift.router)
 
 @app.on_event("startup")
 def startup():
-    init_db()
+    try:
+        init_db()
+    except Exception as e:
+        print(f"Startup DB Init failed: {e}")
+
+@app.get("/api/debug/db")
+def debug_db():
+    try:
+        from database import get_db
+        conn = get_db()
+        tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        table_names = [row["name"] for row in tables]
+        conn.close()
+        return {"status": "ok", "tables": table_names}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
+@app.post("/api/debug/init-db")
+def manual_init_db():
+    try:
+        init_db()
+        return {"status": "initialized"}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
 
 
 @app.get("/")

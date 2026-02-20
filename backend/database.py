@@ -35,24 +35,30 @@ def init_db():
     conn = get_db()
     cur = conn.cursor()
 
-    cur.executescript("""
+    # Create tables individually to ensure compatibility with drivers that might not support executescript fully
+    
+    # Decisions
+    conn.execute("""
     CREATE TABLE IF NOT EXISTS decisions (
         id TEXT PRIMARY KEY,
         question TEXT NOT NULL,
-        context_tags TEXT,  -- JSON list
-        alternatives TEXT,  -- JSON list of objects
-        rationale TEXT,     -- JSON list
-        constraints TEXT,   -- JSON list
+        context_tags TEXT,
+        alternatives TEXT,
+        rationale TEXT,
+        constraints TEXT,
         confidence REAL,
         owner TEXT,
         decided_on TEXT,
-        review_triggers TEXT, -- JSON list
-        status TEXT,        -- active | superseded | archived
+        review_triggers TEXT,
+        status TEXT,
         domain TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        embedding BLOB      -- New: for vector search
-    );
+        embedding BLOB
+    )
+    """)
 
+    # Assumptions
+    conn.execute("""
     CREATE TABLE IF NOT EXISTS assumptions (
         id            INTEGER PRIMARY KEY AUTOINCREMENT,
         decision_id   TEXT NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
@@ -60,8 +66,11 @@ def init_db():
         valid_until   TEXT DEFAULT '',
         risk_if_false TEXT DEFAULT '',
         status        TEXT DEFAULT 'valid'
-    );
+    )
+    """)
 
+    # Evidence
+    conn.execute("""
     CREATE TABLE IF NOT EXISTS evidence (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         decision_id TEXT NOT NULL REFERENCES decisions(id) ON DELETE CASCADE,
@@ -69,16 +78,22 @@ def init_db():
         ref         TEXT NOT NULL,
         reliability TEXT DEFAULT 'medium',
         url         TEXT DEFAULT ''
-    );
+    )
+    """)
 
+    # Signals
+    conn.execute("""
     CREATE TABLE IF NOT EXISTS signals (
         id                     INTEGER PRIMARY KEY AUTOINCREMENT,
         description            TEXT NOT NULL,
         source                 TEXT DEFAULT '',
         detected_on            TEXT DEFAULT '',
         related_assumption_ids TEXT DEFAULT '[]'
-    );
+    )
+    """)
 
+    # Edges
+    conn.execute("""
     CREATE TABLE IF NOT EXISTS edges (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         source_type TEXT NOT NULL,
@@ -86,15 +101,21 @@ def init_db():
         target_type TEXT NOT NULL,
         target_id   TEXT NOT NULL,
         edge_type   TEXT NOT NULL
-    );
-
-    -- FTS virtual table for full-text search over decisions
-    CREATE VIRTUAL TABLE IF NOT EXISTS decisions_fts USING fts5(
-        id, question, rationale, owner, domain, context_tags,
-        content='decisions',
-        content_rowid='rowid'
-    );
+    )
     """)
+
+    # FTS - generic fallback or specific check?
+    # FTS5 might not be available in all LibSQL builds, but usually is.
+    try:
+        conn.execute("""
+        CREATE VIRTUAL TABLE IF NOT EXISTS decisions_fts USING fts5(
+            id, question, rationale, owner, domain, context_tags,
+            content='decisions',
+            content_rowid='rowid'
+        )
+        """)
+    except Exception as e:
+        print(f"Warning: FTS5 creation failed: {e}")
 
     conn.commit()
     
