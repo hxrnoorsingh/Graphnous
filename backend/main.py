@@ -4,7 +4,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import init_db
-from database import init_db
 from routers import decisions, search, graph, drift
 
 app = FastAPI(
@@ -21,10 +20,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(decisions.router)
-app.include_router(search.router)
-app.include_router(graph.router)
-app.include_router(drift.router)
+app.include_router(decisions.router, prefix="/api")
+app.include_router(search.router, prefix="/api")
+app.include_router(graph.router, prefix="/api")
+app.include_router(drift.router, prefix="/api")
 # assistant router removed
 
 

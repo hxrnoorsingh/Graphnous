@@ -5,6 +5,12 @@ import json
 import os
 from datetime import date, datetime
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 DB_PATH = os.path.join(os.path.dirname(__file__), "graphnous.db")
 
 
