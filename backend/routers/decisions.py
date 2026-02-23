@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException
 import json
 
-from database import get_db, get_decision_full, generate_decision_id
+from database import get_db, get_decision_full, generate_decision_id, _row_to_dict, DECISIONS_COLS
 
 router = APIRouter(prefix="/decisions", tags=["decisions"])
 
@@ -22,7 +22,8 @@ def list_decisions(domain: str = "", status: str = ""):
     query += " ORDER BY created_at DESC"
     rows = conn.execute(query, params).fetchall()
     results = []
-    for row in rows:
+    for raw in rows:
+        row = _row_to_dict(raw, DECISIONS_COLS)
         d = get_decision_full(conn, row["id"])
         if d:
             results.append(d)
@@ -83,14 +84,16 @@ def create_decision(body: dict):
 
     # Create edges: decision -> assumptions (depends_on), decision -> evidence (justified_by)
     for a in conn.execute("SELECT id FROM assumptions WHERE decision_id = ?", (did,)).fetchall():
+        aid = a[0] if isinstance(a, (tuple, list)) else a["id"]
         conn.execute(
             "INSERT INTO edges (source_type, source_id, target_type, target_id, edge_type) VALUES (?, ?, ?, ?, ?)",
-            ("decision", did, "assumption", str(a["id"]), "depends_on")
+            ("decision", did, "assumption", str(aid), "depends_on")
         )
     for e in conn.execute("SELECT id FROM evidence WHERE decision_id = ?", (did,)).fetchall():
+        eid = e[0] if isinstance(e, (tuple, list)) else e["id"]
         conn.execute(
             "INSERT INTO edges (source_type, source_id, target_type, target_id, edge_type) VALUES (?, ?, ?, ?, ?)",
-            ("decision", did, "evidence", str(e["id"]), "justified_by")
+            ("decision", did, "evidence", str(eid), "justified_by")
         )
 
     # Update FTS
@@ -150,9 +153,10 @@ def update_decision(decision_id: str, body: dict):
                 (decision_id, a.get("statement", ""), a.get("valid_until", ""), a.get("risk_if_false", ""), a.get("status", "valid"))
             )
         for a in conn.execute("SELECT id FROM assumptions WHERE decision_id = ?", (decision_id,)).fetchall():
+            aid = a[0] if isinstance(a, (tuple, list)) else a["id"]
             conn.execute(
                 "INSERT INTO edges (source_type, source_id, target_type, target_id, edge_type) VALUES (?, ?, ?, ?, ?)",
-                ("decision", decision_id, "assumption", str(a["id"]), "depends_on")
+                ("decision", decision_id, "assumption", str(aid), "depends_on")
             )
 
     # Replace evidence if provided
@@ -165,9 +169,10 @@ def update_decision(decision_id: str, body: dict):
                 (decision_id, e.get("type", ""), e.get("ref", ""), e.get("reliability", "medium"), e.get("url", ""))
             )
         for e in conn.execute("SELECT id FROM evidence WHERE decision_id = ?", (decision_id,)).fetchall():
+            eid = e[0] if isinstance(e, (tuple, list)) else e["id"]
             conn.execute(
                 "INSERT INTO edges (source_type, source_id, target_type, target_id, edge_type) VALUES (?, ?, ?, ?, ?)",
-                ("decision", decision_id, "evidence", str(e["id"]), "justified_by")
+                ("decision", decision_id, "evidence", str(eid), "justified_by")
             )
 
     conn.commit()

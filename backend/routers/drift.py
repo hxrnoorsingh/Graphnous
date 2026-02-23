@@ -4,7 +4,7 @@ from fastapi import APIRouter
 import json
 from datetime import datetime, date
 
-from database import get_db
+from database import get_db, _row_to_dict, DECISIONS_COLS, ASSUMPTIONS_COLS, get_decision_full
 
 router = APIRouter(prefix="/drift", tags=["drift"])
 
@@ -28,12 +28,13 @@ def get_review_queue():
     today = date.today()
     items = []
 
-    decisions = conn.execute("SELECT * FROM decisions WHERE status = 'active'").fetchall()
+    decisions = [_row_to_dict(r, DECISIONS_COLS) for r in conn.execute("SELECT * FROM decisions WHERE status = 'active'").fetchall()]
 
     for dec in decisions:
-        assumptions = conn.execute(
+        assumption_rows = conn.execute(
             "SELECT * FROM assumptions WHERE decision_id = ?", (dec["id"],)
         ).fetchall()
+        assumptions = [_row_to_dict(r, ASSUMPTIONS_COLS) for r in assumption_rows]
 
         for a in assumptions:
             expiry = _parse_date(a["valid_until"])
@@ -66,12 +67,18 @@ def get_review_queue():
                 })
 
         # Low-confidence decisions
-        if dec.get("confidence", 1.0) < 0.4:
+        conf = dec.get("confidence") or 1.0
+        if isinstance(conf, str):
+            try:
+                conf = float(conf)
+            except ValueError:
+                conf = 1.0
+        if conf < 0.4:
             items.append({
                 "decision_id": dec["id"],
                 "decision_question": dec["question"],
                 "severity": "info",
-                "reason": f"Low confidence decision ({dec['confidence']:.0%})",
+                "reason": f"Low confidence decision ({conf:.0%})",
                 "assumption_id": None,
                 "assumption_statement": None,
                 "evidence_changed": None,
@@ -92,13 +99,14 @@ def get_dashboard_stats():
     conn = get_db()
     today = date.today()
 
-    total_decisions = conn.execute("SELECT COUNT(*) as c FROM decisions").fetchone()["c"]
+    count_row = conn.execute("SELECT COUNT(*) as c FROM decisions").fetchone()
+    total_decisions = count_row[0] if isinstance(count_row, (tuple, list)) else count_row["c"]
 
-    assumptions = conn.execute("SELECT * FROM assumptions").fetchall()
+    assumption_rows = [_row_to_dict(r, ASSUMPTIONS_COLS) for r in conn.execute("SELECT * FROM assumptions").fetchall()]
     valid = 0
     aging = 0
     broken = 0
-    for a in assumptions:
+    for a in assumption_rows:
         if a["status"] == "broken":
             broken += 1
         elif a["status"] == "aging":
@@ -112,11 +120,12 @@ def get_dashboard_stats():
             else:
                 valid += 1
 
-    review_count = len(get_review_queue.__wrapped__() if hasattr(get_review_queue, '__wrapped__') else [])
-    # Just count the queue items inline
+    # Count queue items inline
     queue_items = 0
-    for dec in conn.execute("SELECT * FROM decisions WHERE status = 'active'").fetchall():
-        for a in conn.execute("SELECT * FROM assumptions WHERE decision_id = ?", (dec["id"],)).fetchall():
+    dec_rows = [_row_to_dict(r, DECISIONS_COLS) for r in conn.execute("SELECT * FROM decisions WHERE status = 'active'").fetchall()]
+    for dec in dec_rows:
+        a_rows = [_row_to_dict(r, ASSUMPTIONS_COLS) for r in conn.execute("SELECT * FROM assumptions WHERE decision_id = ?", (dec["id"],)).fetchall()]
+        for a in a_rows:
             expiry = _parse_date(a["valid_until"])
             if a["status"] == "broken":
                 queue_items += 1
@@ -126,7 +135,13 @@ def get_dashboard_stats():
                 queue_items += 1
             elif a["status"] == "aging":
                 queue_items += 1
-        if dec.get("confidence", 1.0) < 0.4:
+        conf = dec.get("confidence") or 1.0
+        if isinstance(conf, str):
+            try:
+                conf = float(conf)
+            except ValueError:
+                conf = 1.0
+        if conf < 0.4:
             queue_items += 1
 
     recent = conn.execute(
@@ -134,8 +149,8 @@ def get_dashboard_stats():
     ).fetchall()
     recent_list = []
     for r in recent:
-        from database import get_decision_full
-        d = get_decision_full(conn, r["id"])
+        rd = _row_to_dict(r, DECISIONS_COLS)
+        d = get_decision_full(conn, rd["id"])
         if d:
             recent_list.append(d)
 

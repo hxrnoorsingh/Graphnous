@@ -13,37 +13,58 @@ except ImportError:
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "graphnous.db")
 
+# Track whether we're using Turso so helpers know how to handle rows
+_using_turso = False
+
+# Column names for each table (must match CREATE TABLE order)
+DECISIONS_COLS = ["id", "question", "context_tags", "alternatives", "rationale",
+                  "constraints", "confidence", "owner", "decided_on", "review_triggers",
+                  "status", "domain", "created_at", "embedding"]
+ASSUMPTIONS_COLS = ["id", "decision_id", "statement", "valid_until", "risk_if_false", "status"]
+EVIDENCE_COLS = ["id", "decision_id", "type", "ref", "reliability", "url"]
+
+
+def _row_to_dict(row, columns):
+    """Convert a row (tuple or sqlite3.Row) to a dict."""
+    if row is None:
+        return None
+    # sqlite3.Row already supports dict()
+    if isinstance(row, sqlite3.Row):
+        return dict(row)
+    # For libsql tuples, zip with column names
+    if isinstance(row, (tuple, list)):
+        return dict(zip(columns, row))
+    # Fallback: try dict()
+    try:
+        return dict(row)
+    except (TypeError, ValueError):
+        return dict(zip(columns, row))
 
 
 def get_db():
     """Get a database connection (call per-request)."""
+    global _using_turso
     turso_url = os.environ.get("TURSO_DATABASE_URL")
     turso_auth_token = os.environ.get("TURSO_AUTH_TOKEN")
 
     if turso_url and turso_auth_token:
         import libsql_experimental as libsql
         conn = libsql.connect(database=turso_url, auth_token=turso_auth_token)
+        _using_turso = True
     else:
         conn = sqlite3.connect(DB_PATH)
-
-    conn.row_factory = sqlite3.Row
-    # LibSQL doesn't support PRAGMA journal_mode=WAL over HTTP, and foreign keys are on by default in some versions but worth checking.
-    # We will wrap in try/except or just omit for Turso if unnecessary, but standard sqlite3 needs them.
-    if not turso_url:
+        conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
-    
+        _using_turso = False
+
     return conn
 
 
 def init_db():
     """Create all tables if they don't exist."""
     conn = get_db()
-    cur = conn.cursor()
 
-    # Create tables individually to ensure compatibility with drivers that might not support executescript fully
-    
-    # Decisions
     conn.execute("""
     CREATE TABLE IF NOT EXISTS decisions (
         id TEXT PRIMARY KEY,
@@ -63,7 +84,6 @@ def init_db():
     )
     """)
 
-    # Assumptions
     conn.execute("""
     CREATE TABLE IF NOT EXISTS assumptions (
         id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,7 +95,6 @@ def init_db():
     )
     """)
 
-    # Evidence
     conn.execute("""
     CREATE TABLE IF NOT EXISTS evidence (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,7 +106,6 @@ def init_db():
     )
     """)
 
-    # Signals
     conn.execute("""
     CREATE TABLE IF NOT EXISTS signals (
         id                     INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,7 +116,6 @@ def init_db():
     )
     """)
 
-    # Edges
     conn.execute("""
     CREATE TABLE IF NOT EXISTS edges (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -110,8 +127,6 @@ def init_db():
     )
     """)
 
-    # FTS - generic fallback or specific check?
-    # FTS5 might not be available in all LibSQL builds, but usually is.
     try:
         conn.execute("""
         CREATE VIRTUAL TABLE IF NOT EXISTS decisions_fts USING fts5(
@@ -124,14 +139,17 @@ def init_db():
         print(f"Warning: FTS5 creation failed: {e}")
 
     conn.commit()
-    
+
     # Simple migration to add embedding column if missing
     try:
         conn.execute("SELECT embedding FROM decisions LIMIT 1")
-    except sqlite3.OperationalError:
-        print("Migrating: Adding embedding column to decisions table...")
-        conn.execute("ALTER TABLE decisions ADD COLUMN embedding BLOB")
-        conn.commit()
+    except Exception:
+        try:
+            print("Migrating: Adding embedding column to decisions table...")
+            conn.execute("ALTER TABLE decisions ADD COLUMN embedding BLOB")
+            conn.commit()
+        except Exception:
+            pass
 
     conn.close()
 
@@ -139,7 +157,6 @@ def init_db():
 def update_decision_embedding(conn, decision_id: str, embedding: list[float]):
     """Update decision embedding blob."""
     import array
-    # Store as raw bytes (float32 array)
     blob = array.array('f', embedding).tobytes()
     conn.execute(
         "UPDATE decisions SET embedding = ? WHERE id = ?",
@@ -150,13 +167,15 @@ def update_decision_embedding(conn, decision_id: str, embedding: list[float]):
 # ── Helper converters ───────────────────────────────────────────────────────
 
 def decision_row_to_dict(row, assumptions=None, evidence=None):
-    """Convert a sqlite3.Row for a decision into a dict."""
-    d = dict(row)
-    d["context_tags"] = json.loads(d.get("context_tags", "[]"))
-    d["alternatives"] = json.loads(d.get("alternatives", "[]"))
-    d["rationale"] = json.loads(d.get("rationale", "[]"))
-    d["constraints"] = json.loads(d.get("constraints", "[]"))
-    d["review_triggers"] = json.loads(d.get("review_triggers", "[]"))
+    """Convert a decision row into a dict."""
+    d = _row_to_dict(row, DECISIONS_COLS)
+    if d is None:
+        return None
+    d["context_tags"] = json.loads(d.get("context_tags") or "[]")
+    d["alternatives"] = json.loads(d.get("alternatives") or "[]")
+    d["rationale"] = json.loads(d.get("rationale") or "[]")
+    d["constraints"] = json.loads(d.get("constraints") or "[]")
+    d["review_triggers"] = json.loads(d.get("review_triggers") or "[]")
     d["assumptions"] = assumptions or []
     d["evidence"] = evidence or []
     # Don't return the raw embedding blob to frontend
@@ -166,12 +185,11 @@ def decision_row_to_dict(row, assumptions=None, evidence=None):
 
 
 def assumption_row_to_dict(row):
-    return dict(row)
+    return _row_to_dict(row, ASSUMPTIONS_COLS)
 
 
 def evidence_row_to_dict(row):
-    return dict(row)
-
+    return _row_to_dict(row, EVIDENCE_COLS)
 
 
 def get_decision_full(conn, decision_id: str):
@@ -199,6 +217,7 @@ def generate_decision_id(conn) -> str:
         (f"{prefix}%",)
     ).fetchone()
     if row:
-        last_num = int(row["id"].split("-")[-1])
+        d = _row_to_dict(row, ["id"])
+        last_num = int(d["id"].split("-")[-1])
         return f"{prefix}{last_num + 1:03d}"
     return f"{prefix}001"
