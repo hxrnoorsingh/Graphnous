@@ -40,11 +40,30 @@ def debug_db():
         from database import get_db
         conn = get_db()
         tables = conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
-        table_names = [row["name"] for row in tables]
+        table_names = [row[0] if isinstance(row, (tuple, list)) else row["name"] for row in tables]
         conn.close()
         return {"status": "ok", "tables": table_names}
     except Exception as e:
-        return {"status": "error", "detail": str(e)}
+        import traceback
+        return {"status": "error", "detail": str(e), "traceback": traceback.format_exc()}
+
+@app.get("/api/debug/test-decisions")
+def debug_test_decisions():
+    try:
+        from database import get_db, get_decision_full, _row_to_dict, DECISIONS_COLS
+        conn = get_db()
+        rows = conn.execute("SELECT * FROM decisions").fetchall()
+        results = []
+        for raw in rows:
+            row = _row_to_dict(raw, DECISIONS_COLS)
+            d = get_decision_full(conn, row["id"])
+            if d:
+                results.append(d)
+        conn.close()
+        return {"status": "ok", "count": len(results), "decisions": results}
+    except Exception as e:
+        import traceback
+        return {"status": "error", "detail": str(e), "traceback": traceback.format_exc()}
 
 @app.post("/api/debug/init-db")
 def manual_init_db():
