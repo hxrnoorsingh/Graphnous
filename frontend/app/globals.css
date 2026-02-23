@@ -1177,6 +1177,10 @@ a:hover {
 }
 
 /* ── Responsive ─────────────────────────────────────────────────────────── */
+.sidebar-overlay {
+  display: none;
+}
+
 @media (max-width: 1200px) {
   .three-rail {
     grid-template-columns: 1fr;
@@ -1188,7 +1192,7 @@ a:hover {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .sidebar {
     transform: translateX(-100%);
   }
@@ -1205,43 +1209,8 @@ a:hover {
     display: block;
   }
 
-  .stat-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 480px) {
-  .stat-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .page-content {
-    padding: var(--space-md);
-  }
-}
-
-/* ── More Responsive Tweaks ────────────────────────────────────────────── */
-@media (max-width: 1024px) {
-  .three-rail {
-    grid-template-columns: 1fr;
-    gap: var(--space-md);
-  }
-
-  .rail-left,
-  .rail-right {
-    position: static;
-  }
-
-  .sidebar {
-    transform: translateX(-100%);
-  }
-
-  .sidebar.open {
-    transform: translateX(0);
-  }
-
-  .main-content {
-    margin-left: 0;
+  .sidebar-overlay {
+    display: block;
   }
 
   .topbar-actions .btn span {
@@ -1255,6 +1224,10 @@ a:hover {
 }
 
 @media (max-width: 768px) {
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .topbar {
     padding: 0 var(--space-md);
   }
@@ -1274,5 +1247,15 @@ a:hover {
     opacity: 1 !important;
     position: static !important;
     margin-top: var(--space-sm);
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-content {
+    padding: var(--space-md);
   }
 }

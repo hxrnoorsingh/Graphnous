@@ -70,7 +70,7 @@ function RootLayout({ children }) {
             fetch('/api/drift/review-queue').then({
                 "RootLayout.useEffect": (r)=>r.json()
             }["RootLayout.useEffect"]).then({
-                "RootLayout.useEffect": (data)=>setReviewCount(data.length)
+                "RootLayout.useEffect": (data)=>setReviewCount(Array.isArray(data) ? data.length : 0)
             }["RootLayout.useEffect"]).catch({
                 "RootLayout.useEffect": ()=>{}
             }["RootLayout.useEffect"]);
@@ -327,8 +327,7 @@ function RootLayout({ children }) {
                             position: 'fixed',
                             inset: 0,
                             background: 'rgba(0,0,0,0.5)',
-                            zIndex: 99,
-                            display: 'none'
+                            zIndex: 99
                         },
                         className: "sidebar-overlay",
                         onClick: ()=>setSidebarOpen(false)

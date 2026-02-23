@@ -28,7 +28,9 @@ function HomePage() {
             }["HomePage.useEffect"]);
             fetch('/api/drift/review-queue').then({
                 "HomePage.useEffect": (r)=>r.json()
-            }["HomePage.useEffect"]).then(setReviewQueue).catch({
+            }["HomePage.useEffect"]).then({
+                "HomePage.useEffect": (data)=>setReviewQueue(Array.isArray(data) ? data : [])
+            }["HomePage.useEffect"]).catch({
                 "HomePage.useEffect": ()=>{}
             }["HomePage.useEffect"]);
         }

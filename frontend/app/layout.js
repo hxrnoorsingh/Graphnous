@@ -122,7 +122,7 @@ export default function RootLayout({ children }) {
                     <div
                         style={{
                             position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-                            zIndex: 99, display: 'none',
+                            zIndex: 99
                         }}
                         className="sidebar-overlay"
                         onClick={() => setSidebarOpen(false)}

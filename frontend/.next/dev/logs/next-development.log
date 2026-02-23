@@ -1,4 +1,14 @@
-[00:00:02.332] Server  LOG     ✓ Ready in 1529ms
-[00:01:17.436] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[00:01:17.759] Server  ERROR   (node:4084) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+[00:00:01.659] Server  LOG     ✓ Ready in 1121ms
+[00:00:14.460] Server  WARN    ⚠ Cross origin request detected from 192.168.56.1 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+[00:00:17.596] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:00:17.678] Server  ERROR   (node:5172) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
+[00:00:19.459] Server  ERROR   Failed to proxy http://localhost:8000/drift/stats AggregateError
+[00:00:19.460] Server  ERROR   AggregateError
+[00:00:19.469] Server  ERROR   Failed to proxy http://localhost:8000/drift/review-queue AggregateError
+[00:00:19.470] Server  ERROR   AggregateError
+[00:00:19.481] Server  ERROR   Failed to proxy http://localhost:8000/drift/review-queue AggregateError
+[00:00:19.482] Server  ERROR   AggregateError
+[00:00:21.599] Browser ERROR   unhandledRejection: ChunkLoadError: Failed to load chunk /_next/static/chunks/%5Bturbopack%5D_browser_dev_hmr-client_hmr-client_ts_c7192189._.js from module [turbopack]/browser/dev/hmr-client/hmr-client.ts [app-client] (ecmascript, async loader)
+[00:00:22.468] Server  LOG     ○ Compiling /_error ...
