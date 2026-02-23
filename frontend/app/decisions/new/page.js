@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 const DOMAIN_SUGGESTIONS = ['IT Governance', 'Security', 'Compliance', 'Engineering', 'Operations', 'Finance', 'HR'];
@@ -34,9 +34,13 @@ export default function NewDecisionPage() {
         evidence: [{ type: 'Document', ref: '', reliability: 'medium', url: '' }],
         confidence: 0.5,
         owner: '',
-        decided_on: new Date().toISOString().split('T')[0],
+        decided_on: '', // initialized in useEffect to avoid hydration error
         review_triggers: [],
     });
+
+    useEffect(() => {
+        setForm(prev => ({ ...prev, decided_on: new Date().toISOString().split('T')[0] }));
+    }, []);
 
     const [tagInput, setTagInput] = useState('');
 
