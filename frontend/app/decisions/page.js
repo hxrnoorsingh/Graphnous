@@ -10,7 +10,7 @@ export default function DecisionsListPage() {
     useEffect(() => {
         fetch('/api/decisions')
             .then(r => r.json())
-            .then(data => { setDecisions(data); setLoading(false); })
+            .then(data => { setDecisions(Array.isArray(data) ? data : []); setLoading(false); })
             .catch(() => setLoading(false));
     }, []);
 

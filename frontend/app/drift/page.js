@@ -11,7 +11,7 @@ export default function DriftPage() {
     useEffect(() => {
         fetch('/api/drift/review-queue')
             .then(r => r.json())
-            .then(data => { setQueue(data); setLoading(false); })
+            .then(data => { setQueue(Array.isArray(data) ? data : []); setLoading(false); })
             .catch(() => setLoading(false));
     }, []);
 

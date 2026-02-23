@@ -16,7 +16,7 @@ export default function HomePage() {
 
         fetch('/api/drift/review-queue')
             .then(r => r.json())
-            .then(setReviewQueue)
+            .then(data => setReviewQueue(Array.isArray(data) ? data : []))
             .catch(() => { });
     }, []);
 

@@ -19,7 +19,7 @@ export default function DecisionDetailPage({ params }) {
         return <div className="empty-state"><div className="empty-state-icon" style={{ animation: 'pulse 1.5s infinite' }}>◈</div><h3>Loading…</h3></div>;
     }
 
-    if (!decision) {
+    if (!decision || decision.detail) {
         return <div className="empty-state"><div className="empty-state-icon">⚠</div><h3>Decision not found</h3></div>;
     }
 

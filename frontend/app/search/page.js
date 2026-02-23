@@ -19,7 +19,7 @@ function SearchContent() {
         try {
             const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
             const data = await res.json();
-            setResults(data);
+            setResults(Array.isArray(data) ? data : []);
         } catch {
             setResults([]);
         }

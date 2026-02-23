@@ -36,7 +36,7 @@ export default function RootLayout({ children }) {
     useEffect(() => {
         fetch('/api/drift/review-queue')
             .then(r => r.json())
-            .then(data => setReviewCount(data.length))
+            .then(data => setReviewCount(Array.isArray(data) ? data.length : 0))
             .catch(() => { });
     }, []);
 

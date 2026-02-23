@@ -43,6 +43,7 @@ export default function GraphPage() {
         fetch('/api/graph')
             .then(r => r.json())
             .then(data => {
+                if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.edges)) return;
                 // Initialize positions
                 const centerX = 600;
                 const centerY = 400;

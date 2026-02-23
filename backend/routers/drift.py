@@ -66,7 +66,7 @@ def get_review_queue():
                 })
 
         # Low-confidence decisions
-        if dec["confidence"] < 0.4:
+        if dec.get("confidence", 1.0) < 0.4:
             items.append({
                 "decision_id": dec["id"],
                 "decision_question": dec["question"],
@@ -126,7 +126,7 @@ def get_dashboard_stats():
                 queue_items += 1
             elif a["status"] == "aging":
                 queue_items += 1
-        if dec["confidence"] < 0.4:
+        if dec.get("confidence", 1.0) < 0.4:
             queue_items += 1
 
     recent = conn.execute(
