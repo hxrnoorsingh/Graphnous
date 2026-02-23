@@ -10,25 +10,32 @@ router = APIRouter(prefix="/decisions", tags=["decisions"])
 
 @router.get("")
 def list_decisions(domain: str = "", status: str = ""):
-    conn = get_db()
-    query = "SELECT * FROM decisions WHERE 1=1"
-    params = []
-    if domain:
-        query += " AND domain = ?"
-        params.append(domain)
-    if status:
-        query += " AND status = ?"
-        params.append(status)
-    query += " ORDER BY created_at DESC"
-    rows = conn.execute(query, params).fetchall()
-    results = []
-    for raw in rows:
-        row = _row_to_dict(raw, DECISIONS_COLS)
-        d = get_decision_full(conn, row["id"])
-        if d:
-            results.append(d)
-    conn.close()
-    return results
+    try:
+        conn = get_db()
+        query = "SELECT * FROM decisions WHERE 1=1"
+        params = []
+        if domain:
+            query += " AND domain = ?"
+            params.append(domain)
+        if status:
+            query += " AND status = ?"
+            params.append(status)
+        query += " ORDER BY created_at DESC"
+        if params:
+            rows = conn.execute(query, params).fetchall()
+        else:
+            rows = conn.execute(query).fetchall()
+        results = []
+        for raw in rows:
+            row = _row_to_dict(raw, DECISIONS_COLS)
+            d = get_decision_full(conn, row["id"])
+            if d:
+                results.append(d)
+        conn.close()
+        return results
+    except Exception as e:
+        import traceback
+        return {"error": str(e), "traceback": traceback.format_exc()}
 
 
 @router.get("/{decision_id}")
